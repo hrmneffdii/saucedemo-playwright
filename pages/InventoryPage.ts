@@ -13,4 +13,20 @@ export class InventoryPage {
       .locator('.inventory_item_img img')
       .evaluateAll((imgs) => imgs.map((img) => img.getAttribute('src')));
   }
+
+  async addToCart(productSlug: string) {
+    await this.page.locator(`[data-test="add-to-cart-${productSlug}"]`).click();
+  }
+
+  async remove(productSlug: string) {
+    await this.page.locator(`[data-test="remove-${productSlug}"]`).click();
+  }
+
+  async goToCartPage() {
+    await this.page.locator(`[data-test="shopping-cart-link"]`).click();
+  }
+  
+  get cartBadge() {
+    return this.page.locator('[data-test="shopping-cart-badge"]');
+  }
 }
