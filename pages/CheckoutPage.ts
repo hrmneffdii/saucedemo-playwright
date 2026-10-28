@@ -1,27 +1,53 @@
-import { Page, expect } from '@playwright/test';
+import { Locator, Page } from '@playwright/test';
+
+export interface CustomerInfo {
+  firstName: string;
+  lastName: string;
+  postalCode: string;
+}
 
 export class CheckoutPage {
-  constructor(private page: Page) { }
+  readonly firstName: Locator;
+  readonly lastName: Locator;
+  readonly postalCode: Locator;
+  readonly continueButton: Locator;
+  readonly cancelButton: Locator;
+  readonly finishButton: Locator;
+  readonly error: Locator;
+  readonly subtotal: Locator;
+  readonly tax: Locator;
+  readonly total: Locator;
+  readonly completeHeader: Locator;
 
-  async cancel() {
-    await this.page.locator(`[data-test="cancel"]`).click();
+  constructor(page: Page) {
+    this.firstName = page.getByTestId('firstName');
+    this.lastName = page.getByTestId('lastName');
+    this.postalCode = page.getByTestId('postalCode');
+    this.continueButton = page.getByTestId('continue');
+    this.cancelButton = page.getByTestId('cancel');
+    this.finishButton = page.getByTestId('finish');
+    this.error = page.getByTestId('error');
+    this.subtotal = page.getByTestId('subtotal-label');
+    this.tax = page.getByTestId('tax-label');
+    this.total = page.getByTestId('total-label');
+    this.completeHeader = page.getByTestId('complete-header');
+  }
+
+  async fillInfo(info: CustomerInfo) {
+    await this.firstName.fill(info.firstName);
+    await this.lastName.fill(info.lastName);
+    await this.postalCode.fill(info.postalCode);
   }
 
   async continue() {
-    await this.page.locator(`[data-test="continue"]`).click();
-  }
-
-  async fillInformation(firstName: string, lastName: string, postalCode: string) {
-    await this.page.locator('[data-test="firstName"]').fill(firstName);
-    await this.page.locator('[data-test="lastName"]').fill(lastName);
-    await this.page.locator('[data-test="postalCode"]').fill(postalCode);
+    await this.continueButton.click();
   }
 
   async finish() {
-    await this.page.locator('[data-test="finish"]').click();
+    await this.finishButton.click();
   }
 
-  get completeHeader() {
-    return this.page.locator('[data-test="complete-header"]');
+  async cancel() {
+    await this.cancelButton.click();
   }
 }

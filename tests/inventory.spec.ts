@@ -1,83 +1,42 @@
-import { test, expect } from '@playwright/test';
-import { LoginPage } from '../pages/LoginPage';
-import { InventoryPage } from '../pages/InventoryPage';
+
+import { test, expect } from '../fixtures';
+import { products } from '../data/products';
+
+const namesAsc = products.map((p) => p.name).sort((a, b) => a.localeCompare(b));
+const pricesAsc = products.map((p) => p.price).sort((a, b) => a - b);
+
+const nameSorts = [
+  { option: 'az' as const, expected: namesAsc },
+  { option: 'za' as const, expected: [...namesAsc].reverse() },
+];
+const priceSorts = [
+  { option: 'lohi' as const, expected: pricesAsc },
+  { option: 'hilo' as const, expected: [...pricesAsc].reverse() },
+];
 
 test.describe('Inventory', () => {
-  test('standard_user: add the backpack product into basket', async ({ page }) => {
-    const login = new LoginPage(page);
-    const inventory = new InventoryPage(page);
-
-    await login.goto();
-    await login.login('standard_user');
-    await inventory.expectLoaded();
-
-    await inventory.addToCart('sauce-labs-backpack');
-    await expect(inventory.cartBadge).toHaveText('1');
+  test('displays 6 products with correct names and prices @smoke', async ({ loggedInPage }) => {
+    await expect(loggedInPage.names).toHaveText(products.map((p) => p.name));
+    const prices = await loggedInPage.getPrices();
+    expect(prices.sort((a, b) => a - b)).toEqual(pricesAsc);
   });
 
-  test('standard_user: add the backpack, then remove it', async ({ page }) => {
-    const login = new LoginPage(page);
-    const inventory = new InventoryPage(page);
-
-    await login.goto();
-    await login.login('standard_user');
-    await inventory.expectLoaded();
-
-    // add the backpack first
-    await inventory.addToCart('sauce-labs-backpack');
-    
-    // then, remove it directly in inventory page
-    await inventory.remove('sauce-labs-backpack');
-
-    // the cart badge should be zero
-    await expect(inventory.cartBadge).toHaveCount(0);
+  test('standard_user: each product has a unique image', async ({ loggedInPage }) => {
+    const sources = await loggedInPage.getImageSources();
+    expect(new Set(sources).size).toBe(sources.length);
   });
 
-  test('standard_user: add all product into basket', async ({ page }) => {
-    const login = new LoginPage(page);
-    const inventory = new InventoryPage(page);
+  for (const s of nameSorts) {
+    test(`sort products by name: ${s.option}`, async ({ loggedInPage }) => {
+      await loggedInPage.sortBy(s.option);
+      await expect.poll(() => loggedInPage.getNames()).toEqual(s.expected);
+    });
+  }
 
-    await login.goto();
-    await login.login('standard_user');
-    await inventory.expectLoaded();
-
-    const products: string[] = [
-      'sauce-labs-backpack',
-      'sauce-labs-bike-light',
-      'sauce-labs-bolt-t-shirt',
-      'sauce-labs-fleece-jacket',
-      'sauce-labs-onesie',
-      'test.allthethings()-t-shirt-(red)'
-    ]
-
-    // add all the product
-    for (const product of products) {
-      await inventory.addToCart(product);
-    }
-
-    // the cart badge should be 6
-    await expect(inventory.cartBadge).toHaveText('6');
-  });
-
-  test('standard_user: safe from refresh page', async ({ page }) => {
-    const login = new LoginPage(page);
-    const inventory = new InventoryPage(page);
-
-    await login.goto();
-    await login.login('standard_user');
-    await inventory.expectLoaded();
-
-    const products: string[] = [
-      'sauce-labs-backpack',
-      'sauce-labs-bike-light',
-    ]
-
-    for (const product of products) {
-      await inventory.addToCart(product);
-    }
-
-    await expect(inventory.cartBadge).toHaveText('2');
-    await page.reload();
-    await expect(inventory.cartBadge).toHaveText('2');
-  });
+  for (const s of priceSorts) {
+    test(`sort products by price: ${s.option}`, async ({ loggedInPage }) => {
+      await loggedInPage.sortBy(s.option);
+      await expect.poll(() => loggedInPage.getPrices()).toEqual(s.expected);
+    });
+  }
 });

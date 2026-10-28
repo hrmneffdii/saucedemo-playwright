@@ -1,91 +1,69 @@
-import { expect, test } from "@playwright/test";
-import { LoginPage } from "../pages/LoginPage";
-import { InventoryPage } from "../pages/InventoryPage";
-import { CartPage } from "../pages/CartPage";
-import { CheckoutPage } from "../pages/CheckoutPage";
+
+import { test, expect } from '../fixtures';
+import { products, customer } from '../data/products';
+import { round2 } from '../utils/money';
+
+const required = [
+  { field: 'firstName', error: 'First Name is required' },
+  { field: 'lastName', error: 'Last Name is required' },
+  { field: 'postalCode', error: 'Postal Code is required' },
+] as const;
 
 test.describe('Checkout', () => {
-    let login: LoginPage;
-    let inventory: InventoryPage;
-    let cart: CartPage;
-    let checkout: CheckoutPage;
+  test('complete checkout successfully with valid information @smoke', async ({
+    loggedInPage, cartPage, checkoutPage, page,
+  }) => {
+    await loggedInPage.addToCart(products[0].name);
+    await loggedInPage.openCart();
+    await cartPage.startCheckout();
+    await checkoutPage.fillInfo(customer);
+    await checkoutPage.continue();
+    await expect(page).toHaveURL(/checkout-step-two/);
+    await checkoutPage.finish();
+    await expect(checkoutPage.completeHeader).toHaveText(/thank you for your order/i);
+  });
 
-    // setup for
-    // 1. login
-    // 2. add a product
-    // 3. go to the cart page, then checkout
-    // 4. currently in checkout page 
-    test.beforeEach(async ({ page }) => {
-        login = new LoginPage(page);
-        inventory = new InventoryPage(page);
-        cart = new CartPage(page);
-        checkout = new CheckoutPage(page);
-
-        // login first, then go to inventory
-        await login.goto();
-        await login.login('standard_user');
-        await inventory.expectLoaded();
-
-        // add a product in inventory
-        await inventory.addToCart('sauce-labs-backpack');
-
-        // then go to cart page
-        await inventory.goToCartPage();
-
-        // checkout a product
-        await cart.checkout();
+  for (const r of required) {
+    test(`fail when ${r.field} is empty`, async ({
+      loggedInPage, cartPage, checkoutPage, page,
+    }) => {
+      await loggedInPage.addToCart(products[0].name);
+      await loggedInPage.openCart();
+      await cartPage.startCheckout();
+      await checkoutPage.fillInfo({ ...customer, [r.field]: '' });
+      await checkoutPage.continue();
+      await expect(checkoutPage.error).toContainText(r.error);
+      await expect(page).toHaveURL(/checkout-step-one/);
     });
+  }
 
-    test('standard_user: fill with blank first name', async ({ page }) => {
-        // fill form
-        await checkout.fillInformation('', 'Jacob', '12345');
+  test('cancel checkout preserves cart contents', async ({
+    loggedInPage, cartPage, checkoutPage, page,
+  }) => {
+    await loggedInPage.addToCart(products[0].name);
+    await loggedInPage.openCart();
+    await cartPage.startCheckout();
+    await checkoutPage.cancel();
+    await expect(page).toHaveURL(/cart/);
+    await expect(cartPage.itemNames).toHaveText([products[0].name]);
+  });
 
-        // continue checkout
-        await checkout.continue();
+  test('calculate item subtotal, 8% tax, and total', async ({
+    loggedInPage, cartPage, checkoutPage,
+  }) => {
+    const chosen = [products[0], products[1]];
+    for (const p of chosen) await loggedInPage.addToCart(p.name);
+    await loggedInPage.openCart();
+    await cartPage.startCheckout();
+    await checkoutPage.fillInfo(customer);
+    await checkoutPage.continue();
 
-        // assert
-        await expect(page.locator('[data-test="error"]')).toContainText(
-            'First Name is required'
-        );
-    });
+    const subtotal = round2(chosen.reduce((sum, p) => sum + p.price, 0));
+    const tax = round2(subtotal * 0.08);
+    const total = round2(subtotal + tax);
 
-    test('standard_user: fill with blank last name', async ({ page }) => {
-        // fill form
-        await checkout.fillInformation('Jacob', '', '12345');
-
-        // continue checkout
-        await checkout.continue();
-
-        // assert
-        await expect(page.locator('[data-test="error"]')).toContainText(
-            'Last Name is required'
-        );
-    });
-
-    test('standard_user: fill with blank postal code', async ({ page }) => {
-        // fill form
-        await checkout.fillInformation('Jacob', 'Yusuf', '');
-
-        // continue checkout
-        await checkout.continue();
-
-        // assert
-        await expect(page.locator('[data-test="error"]')).toContainText(
-            'Postal Code is required'
-        );
-    });
-
-    test('standard_user: cancel and go to cart page', async ({ page }) => {
-        await checkout.cancel();
-
-        await expect(page).toHaveURL(/cart/)
-    });
-
-    test('standard_user: finish the transaction', async () => {
-        await checkout.fillInformation('Jacob', 'jona', '12345');
-        await checkout.continue()
-
-        await checkout.finish();
-        await expect(checkout.completeHeader).toContainText('Thank you for your order');
-    });
+    await expect(checkoutPage.subtotal).toContainText(`$${subtotal.toFixed(2)}`);
+    await expect(checkoutPage.tax).toContainText(`$${tax.toFixed(2)}`);
+    await expect(checkoutPage.total).toContainText(`$${total.toFixed(2)}`);
+  });
 });

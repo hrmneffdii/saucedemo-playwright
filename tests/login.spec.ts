@@ -1,54 +1,37 @@
-import { test, expect } from '@playwright/test';
-import { LoginPage } from '../pages/LoginPage';
+
+import { test, expect } from '../fixtures';
+import { users } from '../data/users';
+
+const negativeCases = [
+  { name: 'incorrect password', username: users.standard, password: 'salah123', error: 'Username and password do not match' },
+  { name: 'empty username', username: '', password: users.password, error: 'Username is required' },
+  { name: 'empty password', username: users.standard, password: '', error: 'Password is required' },
+  { name: 'locked account', username: users.locked, password: users.password, error: 'locked out' },
+];
 
 test.describe('Login', () => {
-  test('login success with valid credentials', async ({ page }) => {
-    const login = new LoginPage(page);
-    await login.goto();
-    await login.login('standard_user');
+  test('successful login redirects to inventory @smoke', async ({ loginPage, page }) => {
+    await loginPage.goto();
+    await loginPage.login(users.standard);
     await expect(page).toHaveURL(/inventory/);
   });
 
-  test('login failed with blank username', async ({ page }) => {
-    const login = new LoginPage(page);
-    await login.goto();
-    await login.login('');
-    await expect(page.locator('[data-test="error"]')).toContainText(
-      'Username is required'
-    );
+  for (const c of negativeCases) {
+    test(`login fails: ${c.name}`, async ({ loginPage, page }) => {
+      await loginPage.goto();
+      await loginPage.login(c.username, c.password);
+      await expect(loginPage.error).toContainText(c.error);
+      await expect(page).not.toHaveURL(/inventory/);
+    });
+  }
+
+  test('logout returns to the login page', async ({ loggedInPage, loginPage }) => {
+    await loggedInPage.logout();
+    await expect(loginPage.loginButton).toBeVisible();
   });
 
-  test('login failed with blank password', async ({ page }) => {
-    const login = new LoginPage(page);
-    await login.goto();
-    await login.login('standard_user', '');
-    await expect(page.locator('[data-test="error"]')).toContainText(
-      'Password is required'
-    );
-  });
-
-  test('login failed with wrong password', async ({ page }) => {
-    const login = new LoginPage(page);
-    await login.goto();
-    await login.login('standard_user', 'wrong_password');
-    await expect(page.locator('[data-test="error"]')).toContainText(
-      'Username and password do not match any user in this service'
-    );
-  });
-
-  test('login failed due to capital case sensitive', async ({ page }) => {
-    const login = new LoginPage(page);
-    await login.goto();
-    await login.login('STANDARD_USER');
-    await expect(page.locator('[data-test="error"]')).toContainText(
-      'Username and password do not match any user in this service'
-    );
-  });
-
-  test('login failed due to locked user', async ({ page }) => {
-    const login = new LoginPage(page);
-    await login.goto();
-    await login.login('locked_out_user');
-    await expect(page.locator('[data-test="error"]')).toContainText('locked out');
+  test('access to inventory without login is denied', async ({ page, loginPage }) => {
+    await page.goto('/inventory.html');
+    await expect(loginPage.error).toContainText('logged in');
   });
 });

@@ -1,6 +1,6 @@
 # SauceDemo Playwright: E2E Test Automation
 
-![Playwright Tests](https://github.com/USERNAME/saucedemo-playwright/actions/workflows/playwright.yml/badge.svg)
+![Playwright Tests](https://github.com/hrmneffdii/saucedemo-playwright/actions/workflows/playwright.yml/badge.svg)
 
 E2E test automation project for demo website e-commerce [SauceDemo](https://www.saucedemo.com), using **Playwright** dan **TypeScript**. The project contains test cases, automation test with Page Object Model, bug report, and test summary report with pipeline CI in Github Actions.
 
@@ -28,8 +28,6 @@ E2E test automation project for demo website e-commerce [SauceDemo](https://www.
 saucedemo-playwright/
 ├─ pages/              Page Object (LoginPage, InventoryPage, ...)
 ├─ tests/              Test File (*.spec.ts)
-├─ fixtures/           Fixture Custom
-├─ data/               Data Test
 ├─ bug-reports/        Bug Report per File (BUG-001.md, ...)
 ├─ evidence/           Screenshot and Evidence Bug
 ├─ test-summary.md     Test Summary Report
@@ -59,15 +57,14 @@ npx playwright test -g "login valid"
 npx playwright show-report                   
 ```
 
-## Test Plan
+| Modul     | Count of Test |
+| --------- | ------------- |
+| Login     | 6             |
+| Cart      | 3             |
+| Inventory | 4             |
+| Checkout  | 5             |
+| **Total** | **18**            |
 
-| Modul | Count of Test | Type | Status |
-| --- | --- | --- | --- |
-| Login | 6 | Positif, negatif | Done |
-| Cart  | 5 | Positif, regression | Done |
-| Checkout | 6 | Positif, boundary | Done |
-| Checkout | 3 | Positif, negatif | Done |
-| **Total** | **20** | | |
 ## Bugs Discovered
 
 Detailed reports are available in the [`bug-reports/`](./bug-reports) folder.
